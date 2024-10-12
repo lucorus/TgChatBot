@@ -19,9 +19,9 @@ try:
         '''
         CREATE TABLE IF NOT EXISTS users (
         id BIGINT PRIMARY KEY,
-        avatar TEXT,
         first_name TEXT,
         last_name TEXT,
+        avatar BYTEA,
         created_at TEXT,
         is_admin BOOL DEFAULT False
         )
@@ -32,7 +32,7 @@ try:
         '''
         CREATE TABLE IF NOT EXISTS groups (
         id BIGINT PRIMARY KEY,
-        avatar TEXT,
+        avatar BYTEA,
         title TEXT
         )
         '''
