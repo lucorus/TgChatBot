@@ -1,21 +1,8 @@
+import datetime
 import uuid
 
-import asyncpg
-
+from base import create_connect, time_now
 import config
-
-
-async def create_connect():
-    try:
-        conn = await asyncpg.connect(
-            password=config.password,
-            database=config.db_name,
-            user=config.user,
-            host=config.host
-        )
-        return conn
-    except Exception as ex:
-        print(ex)
 
 
 async def create_user(user_info: dict) -> None:
@@ -72,11 +59,32 @@ async def create_account(user_info: dict, group_info: dict, account_info: dict) 
         print(ex, type(ex), "__create_account")
 
 
+# функция проверяет может ли пользователь получить баллы (баллы можно получить раз в PointsCooldown)
+async def can_get_points(user_id: int, group_id: int) -> bool:
+    try: 
+        conn = await create_connect()
+        account = await conn.fetch('SELECT * FROM accounts WHERE "group"=$1 AND "user"=$2', group_id, user_id)
+        account = account[0]
+        if not account:
+            raise IndexError("account not exists")
+
+        time_difference = datetime.datetime.strptime(time_now(), '%Y-%m-%d %H:%M:%S') - datetime.datetime.strptime(
+            str(account[2]), '%Y-%m-%d %H:%M:%S')
+
+        if time_difference.total_seconds() >= config.PointsCooldown:
+            return True
+        return False
+    except IndexError:
+        raise IndexError("account not exists")
+    except Exception as ex:
+        print(ex, "__can_get_points")
+        return False
+
+
 async def add_points(user_id: int, group_id: int, points: int, last_message_time: str, const_points_count: bool = False) -> bool:
     try:
         conn = await create_connect()
         account = await conn.fetch('SELECT * FROM accounts WHERE "group"=$1 AND "user"=$2', group_id, user_id)
-        print(account)
         if not account:
             raise IndexError("account not exists")
         
@@ -98,31 +106,23 @@ async def add_points(user_id: int, group_id: int, points: int, last_message_time
         return False
 
 
-async def get_user(user_id: int) -> None:
+async def get_user(user_id: int) -> list:
     try:
         conn = await create_connect()
         user = await conn.fetch("SELECT * FROM users WHERE id = $1", user_id)
-        print(user, type(user))
+        user = user[0]
+        return user
     except Exception as ex:
         print(ex, "__get_user")
         return ex
 
 
-async def get_users() -> None:
+async def get_account(user_id: int, group_id: int) -> list:
     try:
         conn = await create_connect()
-        user = await conn.fetch("SELECT * FROM users")
-        print(user, type(user))
-    except Exception as ex:
-        print(ex, "__get_users")
-        return ex
-
-
-async def get_accounts() -> None:
-    try:
-        conn = await create_connect()
-        user = await conn.fetch("SELECT * FROM accounts")
-        print(user, type(user))
+        user = await conn.fetch('SELECT * FROM accounts WHERE "user" = $1 AND "group" = $2', user_id, group_id)
+        user = user[0]
+        return user
     except Exception as ex:
         print(ex, "__get_accounts")
         return ex

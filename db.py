@@ -48,7 +48,8 @@ try:
         payment BIGINT DEFAULT 1,
         exp BIGINT DEFAULT 1,
         "group" BIGINT REFERENCES groups(id),
-        "user" BIGINT REFERENCES users(id)
+        "user" BIGINT REFERENCES users(id),
+        CONSTRAINT unique_group_user UNIQUE ("group", "user")
         )
         '''
     )
