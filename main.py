@@ -5,6 +5,7 @@ from aiogram.types import Message
 import user_db_operations as UsOper
 import config
 import user_views
+import assortment_views
 from base import bot, dp, download_file
 
 

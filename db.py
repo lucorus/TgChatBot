@@ -14,6 +14,9 @@ try:
     cursor = connection.cursor()
     connection.autocommit = True
 
+    cursor.execute("DROP TABLE rarities CASCADE")
+    cursor.execute("DROP TABLE items CASCADE")
+
     # is_admin - является ли юзер админом бота
     cursor.execute(
         '''
@@ -59,17 +62,19 @@ try:
         '''
         CREATE TABLE IF NOT EXISTS rarities (
         id SERIAL PRIMARY KEY,
-        title TEXT,
-        color TEXT
+        title TEXT UNIQUE,
+        color TEXT UNIQUE
         )
         '''
     )
 
     # предмет, который может купить пользователь для увеличения характеристик / просто на память
+    # если sale_price != purchase_price => на item есть скидка
     cursor.execute(
         '''
         CREATE TABLE IF NOT EXISTS items (
         uuid TEXT PRIMARY KEY,
+        title TEXT UNIQUE,
         rarity INT REFERENCES rarities(id),
         change_payment INT,
         change_points INT,

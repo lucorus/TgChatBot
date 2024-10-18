@@ -1,8 +1,18 @@
 import datetime
 import uuid
 
+from aiogram.types import Message
 from base import create_connect, time_now
 import config
+
+
+def admin_required(func):
+    async def wrapper(message: Message, *args, **kwargs):
+        user = await get_user(message.from_user.id)
+        if not user[5]:
+            return
+        return await func(message, *args, **kwargs)
+    return wrapper
 
 
 async def create_user(user_info: dict) -> None:
@@ -127,3 +137,11 @@ async def get_account(user_id: int, group_id: int) -> list:
         print(ex, "__get_accounts")
         return ex
 
+
+# выдаёт пользователю с переданным id права администратора бота
+async def give_admin(user_id: int) -> None:
+    try:
+        conn = await create_connect()
+        await conn.execute("UPDATE users SET is_admin = True WHERE id = $1", user_id)
+    except Exception as ex:
+        print(ex, "__give_admin")
