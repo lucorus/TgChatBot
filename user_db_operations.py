@@ -6,13 +6,30 @@ from base import create_connect, time_now
 import config
 
 
-def admin_required(func):
-    async def wrapper(message: Message, *args, **kwargs):
+def admin_required(func, *args, **kwargs):
+    async def wrapper(message: Message):
         user = await get_user(message.from_user.id)
         if not user[5]:
             return
         return await func(message, *args, **kwargs)
     return wrapper
+
+
+def private(func,*args, **kwargs):
+    async def wrapper(message: Message):
+        if message.chat.type == 'private':
+            return await func(message, *args, **kwargs)
+        return
+    return wrapper
+
+
+def public(func, *args, **kwargs):
+    async def wrapper(message: Message):
+        if message.chat.type in ['group', 'supergroup']:
+            return await func(message, *args, **kwargs)
+        return
+    return wrapper
+
 
 
 async def create_user(user_info: dict) -> None:
@@ -134,7 +151,7 @@ async def get_account(user_id: int, group_id: int) -> list:
         user = user[0]
         return user
     except Exception as ex:
-        print(ex, "__get_accounts")
+        print(ex, "__get_account")
         return ex
 
 

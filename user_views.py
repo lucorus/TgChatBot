@@ -6,7 +6,8 @@ from base import dp, bot
 import config
 
 
-@dp.message(lambda message: message.chat.type in ['group', 'supergroup'], Command("info"))
+@dp.message(Command("info"))
+@UsOper.public
 async def user(message: Message):
   user_info = await UsOper.get_account(message.from_user.id, message.chat.id)
   user_info = f'''\nВаши данные на сервере "{message.chat.title}"
@@ -15,11 +16,11 @@ async def user(message: Message):
   Опыт: {user_info[4]}
   Плата за сообщение: {user_info[3]}
   '''
-  await message.delete()
-  await bot.send_message(chat_id=message.from_user.id, text=user_info)
+  await message.reply(user_info)
 
 
-@dp.message(lambda message: message.chat.type in ['private'], Command("get_admin_status"))
+@dp.message(Command("get_admin_status"))
+@UsOper.private
 async def get_admin_status(message: Message):
   code = message.md_text[20:]
   await message.delete()

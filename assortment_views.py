@@ -6,17 +6,22 @@ import assortment_db_operations as AssortOper
 from base import dp, bot
 
 
-@dp.message(lambda message: message.chat.type in ['group', 'supergroup'], Command("inventory"))
+@dp.message(Command("inventory"))
+@UsOper.public
 async def get_inventory(message: Message):
-  await message.delete()
   inventory = await AssortOper.get_inventory(message.from_user.id, message.chat.id)
-  print(inventory)
   if inventory:
     inventory_list = f'Ваш инвентарь на сервере {message.chat.title}:'
     for item in inventory:
-      inventory_list += f'''\n
-      '''
-    await bot.send_message(chat_id=message.from_user.id, text=inventory)
+      inventory_list += f'''
+        \n{item[4]} ({item[5]}):
+ Изменение оплаты: {item[6]}
+ Изменение количества баллов: {item[7]}
+ Цена: {item[9]}
+ Описание: {item[10]}
+ Возможно купить: {"True" if item[10] else "False"}
+        '''
+    await message.reply(inventory_list)
   
 
 @dp.message(Command("assortment"))
@@ -33,7 +38,7 @@ async def assortment(message: Message):
  Цена: {item[6]}
  Описание: {item[7]}
         '''
-      await bot.send_message(chat_id=message.from_user.id, text=assortment_list)
+      await message.reply(assortment_list)
   except Exception as ex:
     print(ex, "__get_assortment")
 
@@ -51,8 +56,8 @@ async def rarities(message: Message):
     print(ex, "__rarities")
 
 
-@UsOper.admin_required
 @dp.message(Command("CreateRarity"))
+@UsOper.admin_required
 async def create_rarity(message: Message):
   try:
     await message.delete()
@@ -64,8 +69,8 @@ async def create_rarity(message: Message):
     print(ex, "__create_rarity")
 
 
-@UsOper.admin_required
 @dp.message(Command("CreateItem"))
+@UsOper.admin_required
 async def create_item(message: Message):
   try:
     await message.delete()
@@ -91,8 +96,8 @@ async def create_item(message: Message):
     print(ex, "__create_item")
 
 
-@UsOper.admin_required
 @dp.message(Command("DeleteItem"))
+@UsOper.admin_required
 async def delete_item(message: Message):
   try:
     await message.delete()
@@ -106,8 +111,8 @@ async def delete_item(message: Message):
     print(ex, "__delete_item")
 
 
-@UsOper.admin_required
 @dp.message(Command("DeleteRarity"))
+@UsOper.admin_required
 async def delete_rarity(message: Message):
   try:
     await message.delete()
@@ -119,3 +124,61 @@ async def delete_rarity(message: Message):
       await bot.send_message(chat_id=message.from_user.id, text="Произошла ошибка")
   except Exception as ex:
     print(ex, "__delete_rarity")
+
+
+@dp.message(Command("UpdateItem"))
+@UsOper.admin_required
+async def update_item(message: Message):
+  try:
+    await message.delete()
+    message_text = message.text.split()
+
+    if len(message_text) < 8:
+      await bot.send_message(chat_id=message.from_user.id, text=f'Недостаточно данных')
+    elif len(message_text) == 8: # делаем описание к предмету пустым
+      message_text[8] = ""
+
+    item_info = {
+      "old_title": message_text[1],
+      "title": message_text[2],
+      "rarity": int(message_text[3]),
+      "change_payment": int(message_text[4]),
+      "change_points": int(message_text[5]),
+      "purchase_price": int(message_text[6]),
+      "sale_price": int(message_text[7]),
+      "description": ' '.join(message_text[8:]),
+    }
+    await AssortOper.update_item(item_info)
+    await bot.send_message(chat_id=message.from_user.id, text=f'Предмет {item_info["title"]} обновлён!')
+  except Exception as ex:
+    print(ex, "__update_item")
+
+
+@dp.message(Command("UpdateRarity"))
+@UsOper.admin_required
+async def update_rarity(message: Message):
+  try:
+    await message.delete()
+    message_text = message.text.split()
+    old_title, title, color = message_text[1], message_text[2], message_text[3]
+    await AssortOper.update_rarity(old_title, title, color)
+    await bot.send_message(chat_id=message.from_user.id, text=f'Редкость "{title}" обновлена')
+  except Exception as ex:
+    print(ex, "__update_rarity")
+
+
+@dp.message(Command("buy"))
+@UsOper.public
+async def buy_item(message: Message):
+  try:
+    text_words = message.text.split()
+    if len(text_words) == 3:
+      user, item_title = await bot.get_chat(text_words[2]), text_words[1]
+      print(user, item_title)
+    else:
+      user, item_title = message.from_user.id, text_words[1]
+      print(user, item_title)
+    await AssortOper.buy_item(item_title, user, message.chat.id)
+    await message.reply(f"Предмет {item_title} куплен!")
+  except Exception as ex:
+    print(ex, "__buy_item")

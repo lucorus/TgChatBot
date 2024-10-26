@@ -1,5 +1,4 @@
 import asyncio
-from aiogram.filters import Command
 from aiogram.types import Message
 
 import user_db_operations as UsOper
@@ -10,7 +9,8 @@ from base import bot, dp, download_file
 
 
 # Обработчик сообщений в группе
-@dp.message(lambda message: message.chat.type in ['group', 'supergroup'])
+@dp.message()
+@UsOper.public
 async def handle_message(message: Message):
     if message.from_user.is_bot:
         return
