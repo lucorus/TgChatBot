@@ -172,13 +172,19 @@ async def update_rarity(message: Message):
 async def buy_item(message: Message):
   try:
     text_words = message.text.split()
+    print(message.entities)
+
     if len(text_words) == 3:
-      user, item_title = await bot.get_chat(text_words[2]), text_words[1]
-      print(user, item_title)
-    else:
-      user, item_title = message.from_user.id, text_words[1]
-      print(user, item_title)
-    await AssortOper.buy_item(item_title, user, message.chat.id)
+      for entity in message.entities:
+        if entity.type == 'mention':
+          user_id = entity.user.id
+      item_title = text_words[2]
+
+    elif len(text_words) == 2:
+      item_title = text_words[1]
+      user_id = message.from_user.id
+        
+    await AssortOper.buy_item(item_title, user_id, message.chat.id)
     await message.reply(f"Предмет {item_title} куплен!")
   except Exception as ex:
     print(ex, "__buy_item")

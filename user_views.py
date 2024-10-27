@@ -2,7 +2,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 import user_db_operations as UsOper
-from base import dp, bot
+from base import dp, bot, download_file
 import config
 
 
@@ -19,11 +19,39 @@ async def user(message: Message):
   await message.reply(user_info)
 
 
-@dp.message(Command("get_admin_status"))
+@dp.message(Command("GetAdminStatus"))
 @UsOper.private
 async def get_admin_status(message: Message):
-  code = message.md_text[20:]
+  code = message.text.split()[1]
   await message.delete()
   if code == config.AdminCode:
     await UsOper.give_admin(message.from_user.id)
     await bot.send_message(chat_id=message.from_user.id, text="Вы получили статус администратора!")
+
+
+@dp.message(Command("update_profile"))
+async def update_user(message: Message):
+  try:
+    user_photos = await bot.get_user_profile_photos(message.from_user.id)
+    user_avatar_file_id = user_photos.photos[0][-1].file_id if user_photos.photos else None
+    user_avatar_url = None
+
+    if user_avatar_file_id:
+      user_avatar_file = await bot.get_file(user_avatar_file_id)
+      user_avatar_url = f"https://api.telegram.org/file/bot{config.token}/{user_avatar_file.file_path}"
+    
+    file_data = None
+    if user_avatar_url:
+      file_data = await download_file(user_avatar_url)
+
+    user_info = {
+      "id": message.from_user.id,
+      "first_name": message.from_user.first_name,
+      "last_name": message.from_user.last_name,
+      "avatar": file_data
+    }
+
+    await UsOper.update_user(user_info)
+    return message.reply("Профиль успешно обновлён")
+  except Exception as ex:
+    print(ex, "__update_user")

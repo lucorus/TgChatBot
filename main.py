@@ -1,10 +1,10 @@
 import asyncio
 from aiogram.types import Message
+from aiogram.filters import Command
 
 import user_db_operations as UsOper
 import config
-import user_views
-import assortment_views
+import user_views, assortment_views, group_views
 from base import bot, dp, download_file
 
 
@@ -17,7 +17,7 @@ async def handle_message(message: Message):
     now = message.date.strftime('%Y-%m-%d %H:%M:%S')
     try:
         if await UsOper.can_get_points(message.from_user.id, message.chat.id):
-            await UsOper.add_points(group_id=message.chat.id, user_id=message.from_user.id, points=1, last_message_time=now)
+            await UsOper.add_points(group_id=message.chat.id, user_id=message.from_user.id, points=0, last_message_time=now)
     except IndexError:
         # Собираем информацию, чтобы создать аккаунт/профиль для пользователя
         user_photos = await bot.get_user_profile_photos(message.from_user.id)
@@ -64,7 +64,6 @@ async def handle_message(message: Message):
             "user_id": message.from_user.id,
             "group_id": message.chat.id
         }
-
         await UsOper.create_account(user_info, group_info, account_info)
     except Exception as ex:
         print(ex, "__main_func")

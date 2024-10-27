@@ -2,6 +2,8 @@ import datetime
 import uuid
 
 from aiogram.types import Message
+
+import group_db_operations as GroupOper
 from base import create_connect, time_now
 import config
 
@@ -47,17 +49,17 @@ async def create_user(user_info: dict) -> None:
         return ex
 
 
-async def create_group(group_info: dict) -> None:
+async def update_user(user_info: dict) -> None:
     try:
-        conn = await create_connect()
-        await conn.execute(
-            '''
-            INSERT INTO groups (id, avatar, title) VALUES($1, $2, $3)
-            ''', group_info["id"], group_info["avatar"], group_info["title"]
-        )
-        print("success!")
+      conn = await create_connect()
+      await conn.execute(
+          '''
+          UPDATE users SET first_name = $1, last_name = $2, avatar = $3 WHERE id = $4
+          ''', user_info["first_name"], user_info["last_name"], user_info["avatar"], user_info["id"]
+      )
     except Exception as ex:
-        print(ex, "__create_group")
+        print(ex, "___update_user")
+        return ex
 
 
 async def create_account(user_info: dict, group_info: dict, account_info: dict) -> None:
@@ -72,7 +74,7 @@ async def create_account(user_info: dict, group_info: dict, account_info: dict) 
             # Проверка наличия группы
             group = await conn.fetchrow('SELECT * FROM groups WHERE id = $1', account_info["group_id"])
             if not group:
-                await create_group(group_info)
+                await GroupOper.create_group(group_info)
 
             # Создание аккаунта
             await conn.execute(
@@ -124,8 +126,8 @@ async def add_points(user_id: int, group_id: int, points: int, last_message_time
         else:
             await conn.execute(
                 '''
-                UPDATE accounts SET points = points + payment + $1, exp = exp + 1, last_message_time = $2 WHERE uuid = $3
-                ''', points, last_message_time, account[0][0]
+                UPDATE accounts SET points = points + payment, exp = exp + 1, last_message_time = $1 WHERE uuid = $2
+                ''', last_message_time, account[0][0]
             )
         return True
     except Exception as ex:
