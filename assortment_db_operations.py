@@ -2,16 +2,18 @@ import uuid
 
 import user_db_operations as UsOper 
 from base import create_connect
+from utils import UserInputException
+import config
 
 
-async def get_inventory(user_id: int, group_id: int) -> list:
+async def get_inventory(user_id: int, group_id: int, page: int = 0) -> list:
   try:
     conn = await create_connect()
     account = await UsOper.get_account(user_id, group_id)
     inventory = await conn.fetch(
     '''
-    SELECT * FROM inventory_item LEFT JOIN items ON inventory_item.item = items.uuid WHERE account = $1
-    ''', account[0]
+    SELECT * FROM inventory_item LEFT JOIN items ON inventory_item.item = items.uuid WHERE account = $1 LIMIT $2 OFFSET $3
+    ''', account[0], config.PageSize, page * config.PageSize
     )
     return inventory
   except Exception as ex:
@@ -101,21 +103,58 @@ async def update_item(item_info: dict) -> None:
     print(ex, "__update_item")
 
 
-async def buy_item(item_title: str, user_id: int, group_id: int) -> None:
+# user1 - пользователь, который покупает предмет, user2 - тот, кому покупают предмет (может быть одним юзером)
+async def buy_item(item_title: str, user1_id: int, user2_id: int, group_id: int) -> None:
   try:
     conn = await create_connect()
     item = await conn.fetch("SELECT * FROM items WHERE title = $1", item_title)
-    item = item[0]
-    account = await UsOper.get_account(user_id, group_id)
-    if item and account:
-      await conn.execute(
-      "INSERT INTO inventory_item (uuid, account, item) VALUES($1, $2, $3)",
-      str(uuid.uuid4()), account[0], item[0])
-      await conn.execute(
-        "UPDATE accounts SET points = points - $1 + $2, payment = payment + $3 WHERE uuid = $4",
-        item[6], item[4], item[3], account[0]
-      )
+    if item:
+      item = item[0]
+      account1 = await UsOper.get_account(user1_id, group_id)
+      if account1:
+        # получаем значение для второго юзера, если он не равен первому юзеру
+        account2 = await UsOper.get_account(user2_id, group_id) if user1_id != user2_id else account1
+        if account2:
+          await conn.execute(
+          "INSERT INTO inventory_item (uuid, account, item) VALUES($1, $2, $3)",
+          str(uuid.uuid4()), account2[0], item[0])
+
+          # устанавливаем значения для переменных, которые будут показывать изменение
+          # характеристик для человека, купившего предмет (user1), и для того, которому 
+          # покупают (user2)
+          if item[3] < 0:
+            dif_payment_1 = item[3]
+            dif_payment_2 = 0
+          else:
+            dif_payment_1 = 0
+            dif_payment_2 = item[3]
+
+
+          if item[4] < 0:
+            dif_points_1 = item[4]
+            dif_points_2 = 0
+          else:
+            dif_points_1 = 0
+            dif_points_2 = item[4]
+
+          if account1[1] - dif_points_1 - item[6] < 0 or account1[3] - dif_points_2 <= 0:
+            raise UserInputException("Недостаточно характеристик для покупки данного предмета")
+
+          async with conn.transaction():
+          # бонусы после добавления предмета
+            await conn.execute(
+              "UPDATE accounts SET points = points + $1, payment = payment + $2 WHERE uuid = $3",
+              dif_points_2, dif_payment_2, account2[0]
+            )
+            # сама покупка предмета
+            await conn.execute(
+              "UPDATE accounts SET points = points + $1, payment = payment + $2 WHERE uuid = $3", 
+              (dif_points_1 - item[6]), dif_payment_1, account1[0])
+        else:
+          raise UserInputException("Информация о пользователе, которому покупают предмет не найдена")
+      else:
+        raise UserInputException("Информация о покупателе не найдена")
     else:
-      raise Exception("Объекты не найдены")
+      raise UserInputException("Предмет не найден")
   except Exception as ex:
     print(ex, "__buy item")

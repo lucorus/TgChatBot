@@ -1,9 +1,11 @@
 from aiogram.filters import Command
 from aiogram.types import Message
+from aiogram import Bot
 
 import user_db_operations as UsOper
 import assortment_db_operations as AssortOper
 from base import dp, bot
+from utils import UserInputException
 
 
 @dp.message(Command("inventory"))
@@ -172,19 +174,15 @@ async def update_rarity(message: Message):
 async def buy_item(message: Message):
   try:
     text_words = message.text.split()
-    print(message.entities)
-
-    if len(text_words) == 3:
-      for entity in message.entities:
-        if entity.type == 'mention':
-          user_id = entity.user.id
-      item_title = text_words[2]
-
-    elif len(text_words) == 2:
-      item_title = text_words[1]
+    if message.reply_to_message:
+      user_id = message.reply_to_message.from_user.id
+    else:
       user_id = message.from_user.id
-        
-    await AssortOper.buy_item(item_title, user_id, message.chat.id)
+    item_title = text_words[1]
+                
+    await AssortOper.buy_item(item_title, message.from_user.id, user_id, message.chat.id)
     await message.reply(f"Предмет {item_title} куплен!")
+  except UserInputException as ex:
+    await message.reply(ex.message)
   except Exception as ex:
     print(ex, "__buy_item")
