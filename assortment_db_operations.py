@@ -6,16 +6,38 @@ from utils import UserInputException
 import config
 
 
-async def get_inventory(user_id: int, group_id: int, page: int = 0) -> list:
+async def get_inventory(user_id: int, group_id: int, page: int = 0) -> list[bool, list]:
   try:
     conn = await create_connect()
     account = await UsOper.get_account(user_id, group_id)
     inventory = await conn.fetch(
-    '''
-    SELECT * FROM inventory_item LEFT JOIN items ON inventory_item.item = items.uuid WHERE account = $1 LIMIT $2 OFFSET $3
-    ''', account[0], config.PageSize, page * config.PageSize
-    )
-    return inventory
+            '''
+            SELECT
+                inventory_item.uuid AS inventory_uuid,
+                inventory_item.account,
+                inventory_item.item,
+                items.uuid AS item_uuid,
+                items.title AS item_title,
+                items.rarity,
+                items.change_payment,
+                items.change_points,
+                items.purchase_price,
+                items.sale_price,
+                items.description,
+                items.for_sale,
+                rarities.title AS rarity_title,
+                rarities.color AS rarity_color
+            FROM inventory_item
+            LEFT JOIN items ON inventory_item.item = items.uuid
+            LEFT JOIN rarities ON items.rarity = rarities.id
+            WHERE inventory_item.account = $1
+            LIMIT $2 OFFSET $3
+            ''', account[0], config.PageSize + 1, page * config.PageSize
+        )
+    if len(inventory) > config.PageSize:
+      # в инвентаре есть предметы для следующей страницы
+      return True, inventory[:-1]
+    return False, inventory
   except Exception as ex:
     print(ex, "___get_inventory")
     return ex

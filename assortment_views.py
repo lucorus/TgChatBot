@@ -1,6 +1,7 @@
+from aiogram import types, F
 from aiogram.filters import Command
-from aiogram.types import Message
-from aiogram import Bot
+from aiogram.types import Message, CallbackQuery
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import user_db_operations as UsOper
 import assortment_db_operations as AssortOper
@@ -8,23 +9,60 @@ from base import dp, bot
 from utils import UserInputException
 
 
-@dp.message(Command("inventory"))
-@UsOper.public
-async def get_inventory(message: Message):
-  inventory = await AssortOper.get_inventory(message.from_user.id, message.chat.id)
+# базовая функция для остальных функций отображаения инвентаря 
+async def base_get_inventory(page: int, user_id: int, username: str, chat_id: int) -> list[list|str, InlineKeyboardBuilder]:
+  next_page, inventory = await AssortOper.get_inventory(user_id, chat_id, page)
   if inventory:
-    inventory_list = f'Ваш инвентарь на сервере {message.chat.title}:'
+    inventory_list = f'Инвентарь @{username}:'
     for item in inventory:
       inventory_list += f'''
-        \n{item[4]} ({item[5]}):
+        \n{item[4]} ({item[12]}):
  Изменение оплаты: {item[6]}
  Изменение количества баллов: {item[7]}
  Цена: {item[9]}
  Описание: {item[10]}
- Возможно купить: {"True" if item[10] else "False"}
+ Возможно купить: {"✅" if item[11] else "❌"}
         '''
-    await message.reply(inventory_list)
-  
+      
+    builder = InlineKeyboardBuilder()      
+    if page > 0:
+      builder.row(types.InlineKeyboardButton(
+        text="⬅️ Предыдущая страница",
+        callback_data=f"inventory {page - 1} {user_id} {username}")
+      )
+    if next_page:
+      builder.row(types.InlineKeyboardButton(
+        text="Следующая страница ➡️",
+        callback_data=f"inventory {page + 1} {user_id} {username}")
+      )
+
+    return inventory_list, builder
+  else:
+    return "Инвентарь пуст", None
+
+
+@dp.message(Command("inventory"))
+@UsOper.public
+async def get_inventory(message: Message):
+  inventory, builder = await base_get_inventory(0, message.from_user.id, message.from_user.username, message.chat.id)
+  if builder:
+    await message.reply(inventory, reply_markup=builder.as_markup())
+  else:
+    await message.reply(inventory)
+
+
+"""
+При пагинцаии инвентаря вместе с номером страницы будет передаваться id пользователя и его username, 
+чтобы знать данные какого пользавателя показывать при смене страницы
+"""
+@dp.callback_query(F.data.split()[0] == 'inventory')
+async def next_page(callback: CallbackQuery):
+  callback_list = callback.data.split()
+  page, owner_invenotry_id, owner_invenotry_username = int(callback_list[1]), int(callback_list[2]), callback_list[3]
+  inventory, builder = await base_get_inventory(page, owner_invenotry_id, owner_invenotry_username, 
+                                                callback.message.chat.id)
+  await callback.message.edit_text(inventory, reply_markup=builder.as_markup())
+
 
 @dp.message(Command("assortment"))
 async def assortment(message: Message):
@@ -175,6 +213,9 @@ async def buy_item(message: Message):
   try:
     text_words = message.text.split()
     if message.reply_to_message:
+      if message.reply_to_message.from_user.bot:
+        await message.reply("Боту нельзя купить предеметы!")
+        return
       user_id = message.reply_to_message.from_user.id
     else:
       user_id = message.from_user.id
