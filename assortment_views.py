@@ -64,23 +64,54 @@ async def next_page(callback: CallbackQuery):
   await callback.message.edit_text(inventory, reply_markup=builder.as_markup())
 
 
-@dp.message(Command("assortment"))
-async def assortment(message: Message):
-  try:
-    assortment = await AssortOper.get_assortment()
-    if assortment:
-      assortment_list = f'Ассортимент:'
-      for item in assortment:
-        assortment_list += f'''
-        \n{item[1]} ({item[10]}):
+# базовая функция для остальных функций отображаения инвентаря 
+async def base_get_assortment(page: int) -> list[list|str, InlineKeyboardBuilder]:
+  next_page, assortment_list = await AssortOper.get_assortment(page)
+  if assortment_list:
+    assortment = f'Ассортимент:'
+    for item in assortment_list:
+      assortment += f'''
+      \n{item[1]} ({item[10]}):
  Изменение оплаты: {item[3]}
  Изменение количества баллов: {item[4]}
  Цена: {item[6]}
  Описание: {item[7]}
         '''
-      await message.reply(assortment_list)
-  except Exception as ex:
-    print(ex, "__get_assortment")
+      
+    builder = InlineKeyboardBuilder()      
+    if page > 0:
+      builder.row(types.InlineKeyboardButton(
+        text="⬅️ Предыдущая страница",
+        callback_data=f"assortment {page - 1}")
+      )
+    if next_page:
+      builder.row(types.InlineKeyboardButton(
+        text="Следующая страница ➡️",
+        callback_data=f"assortment {page + 1}")
+      )
+
+    return assortment, builder
+  else:
+    return "Нет предметов доступных для покупки", None
+
+
+@dp.message(Command("assortment"))
+async def get_assortment(message: Message):
+  assortment, builder = await base_get_assortment(0)
+  if builder:
+    await message.reply(assortment, reply_markup=builder.as_markup())
+  else:
+    await message.reply(assortment)
+  
+
+@dp.callback_query(F.data.split()[0] == 'assortment')
+async def page_assortment(callback: CallbackQuery):
+  page = int(callback.data.split()[1])
+  assortment, builder = await base_get_assortment(page)
+  if builder:
+    await callback.message.edit_text(assortment, reply_markup=builder.as_markup())
+  else:
+    await callback.message.edit_text(assortment)
 
 
 @dp.message(Command("rarities"))

@@ -6,6 +6,7 @@ from utils import UserInputException
 import config
 
 
+# возвращает 1 - есть ли следующая страница; 2 - список предметов на текущей странице
 async def get_inventory(user_id: int, group_id: int, page: int = 0) -> list[bool, list]:
   try:
     conn = await create_connect()
@@ -43,11 +44,17 @@ async def get_inventory(user_id: int, group_id: int, page: int = 0) -> list[bool
     return ex
     
 
-async def get_assortment() -> list:
+# возвращает 1 - есть ли следующая страница; 2 - список предметов на текущей странице
+async def get_assortment(page: int = 0) -> list[bool, list]:
   try:
     conn = await create_connect()
-    assortment = await conn.fetch("SELECT * FROM items LEFT JOIN rarities ON items.rarity = rarities.id WHERE for_sale = True")
-    return assortment
+    assortment = await conn.fetch(
+      "SELECT * FROM items LEFT JOIN rarities ON items.rarity = rarities.id WHERE for_sale = True LIMIT $1 OFFSET $2",
+      config.PageSize + 1, page * config.PageSize
+    )
+    if len(assortment) > config.PageSize:
+      return True, assortment
+    return False, assortment
   except Exception as ex:
     print(ex, "___get_inventory")
     return ex

@@ -5,7 +5,7 @@ from aiogram.filters import Command
 import user_db_operations as UsOper
 import config
 import user_views, assortment_views, group_views
-from base import bot, dp, download_file
+from base import bot, dp, download_file, time_now
 
 
 # Обработчик сообщений в группе
@@ -14,7 +14,7 @@ from base import bot, dp, download_file
 async def handle_message(message: Message):
     if message.from_user.is_bot:
         return
-    now = message.date.strftime('%Y-%m-%d %H:%M:%S')
+    now = time_now()
     try:
         if await UsOper.can_get_points(message.from_user.id, message.chat.id):
             await UsOper.add_points(group_id=message.chat.id, user_id=message.from_user.id, points=0, last_message_time=now)
