@@ -14,9 +14,6 @@ try:
     cursor = connection.cursor()
     connection.autocommit = True
 
-    cursor.execute("DROP TABLE rarities CASCADE")
-    cursor.execute("DROP TABLE items CASCADE")
-
     # is_admin - является ли юзер админом бота
     cursor.execute(
         '''
@@ -24,7 +21,7 @@ try:
         id BIGINT PRIMARY KEY,
         first_name TEXT,
         last_name TEXT,
-        avatar BYTEA,
+
         created_at TEXT,
         is_admin BOOL DEFAULT False
         )
@@ -35,7 +32,7 @@ try:
         '''
         CREATE TABLE IF NOT EXISTS groups (
         id BIGINT PRIMARY KEY,
-        avatar BYTEA,
+
         title TEXT
         )
         '''

@@ -9,8 +9,15 @@ import config
 @dp.message(Command("info"))
 @UsOper.public
 async def user(message: Message):
-  user_info = await UsOper.get_account(message.from_user.id, message.chat.id)
-  user_info = f'''\nВаши данные на сервере "{message.chat.title}"
+  if message.reply_to_message:
+    if message.reply_to_message.from_user.is_bot:
+      await message.reply("Нельзя посмотреть характеристики бота!")
+      return
+    user = message.reply_to_message.from_user
+  else:
+    user = message.from_user
+  user_info = await UsOper.get_account(user.id, message.chat.id)
+  user_info = f'''\nДанные пользователя @{user.username} на сервере "{message.chat.title}"
   Баллы: {user_info[1]}
   Последняя активность: {user_info[2]}
   Опыт: {user_info[4]}
@@ -32,23 +39,10 @@ async def get_admin_status(message: Message):
 @dp.message(Command("update_profile"))
 async def update_user(message: Message):
   try:
-    user_photos = await bot.get_user_profile_photos(message.from_user.id)
-    user_avatar_file_id = user_photos.photos[0][-1].file_id if user_photos.photos else None
-    user_avatar_url = None
-
-    if user_avatar_file_id:
-      user_avatar_file = await bot.get_file(user_avatar_file_id)
-      user_avatar_url = f"https://api.telegram.org/file/bot{config.token}/{user_avatar_file.file_path}"
-    
-    file_data = None
-    if user_avatar_url:
-      file_data = await download_file(user_avatar_url)
-
     user_info = {
       "id": message.from_user.id,
       "first_name": message.from_user.first_name,
       "last_name": message.from_user.last_name,
-      "avatar": file_data
     }
 
     await UsOper.update_user(user_info)

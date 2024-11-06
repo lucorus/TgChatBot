@@ -11,7 +11,7 @@ import config
 def admin_required(func, *args, **kwargs):
     async def wrapper(message: Message):
         user = await get_user(message.from_user.id)
-        if not user[5]:
+        if not user[4]:
             return
         return await func(message, *args, **kwargs)
     return wrapper
@@ -39,10 +39,10 @@ async def create_user(user_info: dict) -> None:
       conn = await create_connect()
       await conn.execute(
           '''
-          INSERT INTO users (id, first_name, last_name, created_at, is_admin, avatar)
-          VALUES($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING
+          INSERT INTO users (id, first_name, last_name, created_at, is_admin)
+          VALUES($1, $2, $3, $4, $5) ON CONFLICT (id) DO NOTHING
           ''', user_info["id"], user_info["first_name"],
-          user_info["last_name"], user_info["created_at"], user_info["is_admin"], user_info["avatar"]
+          user_info["last_name"], user_info["created_at"], user_info["is_admin"]
       )
     except Exception as ex:
         print(ex, "___create_user")
@@ -54,8 +54,8 @@ async def update_user(user_info: dict) -> None:
       conn = await create_connect()
       await conn.execute(
           '''
-          UPDATE users SET first_name = $1, last_name = $2, avatar = $3 WHERE id = $4
-          ''', user_info["first_name"], user_info["last_name"], user_info["avatar"], user_info["id"]
+          UPDATE users SET first_name = $1, last_name = $2 WHERE id = $4
+          ''', user_info["first_name"], user_info["last_name"], user_info["id"]
       )
     except Exception as ex:
         print(ex, "___update_user")

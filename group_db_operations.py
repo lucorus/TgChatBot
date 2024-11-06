@@ -6,8 +6,8 @@ async def create_group(group_info: dict) -> None:
         conn = await create_connect()
         await conn.execute(
             '''
-            INSERT INTO groups (id, avatar, title) VALUES($1, $2, $3)
-            ''', group_info["id"], group_info["avatar"], group_info["title"]
+            INSERT INTO groups (id, title) VALUES($1, $2)
+            ''', group_info["id"], group_info["title"]
         )
     except Exception as ex:
         print(ex, "__create_group")
@@ -18,8 +18,8 @@ async def update_group(group_info: dict) -> None:
         conn = await create_connect()
         await conn.execute(
             '''
-            UPDATE groups SET avatar = $1, title = $2 WHERE id = $3
-            ''', group_info["avatar"], group_info["title"], group_info["id"]
+            UPDATE groups SET title = $1 WHERE id = $2
+            ''', group_info["title"], group_info["id"]
         )
     except Exception as ex:
         print(ex, "__update_group")

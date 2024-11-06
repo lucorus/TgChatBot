@@ -244,7 +244,7 @@ async def buy_item(message: Message):
   try:
     text_words = message.text.split()
     if message.reply_to_message:
-      if message.reply_to_message.from_user.bot:
+      if message.reply_to_message.from_user.is_bot:
         await message.reply("Боту нельзя купить предеметы!")
         return
       user_id = message.reply_to_message.from_user.id
@@ -252,8 +252,8 @@ async def buy_item(message: Message):
       user_id = message.from_user.id
     item_title = text_words[1]
                 
-    await AssortOper.buy_item(item_title, message.from_user.id, user_id, message.chat.id)
-    await message.reply(f"Предмет {item_title} куплен!")
+    ans_message = await AssortOper.buy_item(item_title, message.from_user.id, user_id, message.chat.id)
+    await message.reply(ans_message)
   except UserInputException as ex:
     await message.reply(ex.message)
   except Exception as ex:

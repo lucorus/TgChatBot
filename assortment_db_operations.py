@@ -133,7 +133,7 @@ async def update_item(item_info: dict) -> None:
 
 
 # user1 - пользователь, который покупает предмет, user2 - тот, кому покупают предмет (может быть одним юзером)
-async def buy_item(item_title: str, user1_id: int, user2_id: int, group_id: int) -> None:
+async def buy_item(item_title: str, user1_id: int, user2_id: int, group_id: int) -> str:
   try:
     conn = await create_connect()
     item = await conn.fetch("SELECT * FROM items WHERE title = $1", item_title)
@@ -144,9 +144,6 @@ async def buy_item(item_title: str, user1_id: int, user2_id: int, group_id: int)
         # получаем значение для второго юзера, если он не равен первому юзеру
         account2 = await UsOper.get_account(user2_id, group_id) if user1_id != user2_id else account1
         if account2:
-          await conn.execute(
-          "INSERT INTO inventory_item (uuid, account, item) VALUES($1, $2, $3)",
-          str(uuid.uuid4()), account2[0], item[0])
 
           # устанавливаем значения для переменных, которые будут показывать изменение
           # характеристик для человека, купившего предмет (user1), и для того, которому 
@@ -160,30 +157,40 @@ async def buy_item(item_title: str, user1_id: int, user2_id: int, group_id: int)
 
 
           if item[4] < 0:
-            dif_points_1 = item[4]
+            dif_points_1 = item[4] - item[6]
             dif_points_2 = 0
           else:
-            dif_points_1 = 0
+            dif_points_1 = 0 - item[6]
             dif_points_2 = item[4]
 
-          if account1[1] - dif_points_1 - item[6] < 0 or account1[3] - dif_points_2 <= 0:
+          if account1[1] - dif_points_1 - item[6] < 0 or account1[3] - dif_payment_1 <= 0:
             raise UserInputException("Недостаточно характеристик для покупки данного предмета")
-
           async with conn.transaction():
-          # бонусы после добавления предмета
+            
+            # добавление предмета в инвентарь
+            await conn.execute(
+              "INSERT INTO inventory_item (uuid, account, item) VALUES($1, $2, $3)", 
+              str(uuid.uuid4()), account2[0], item[0])
+
+            # сама покупка предмета
+            await conn.execute(
+              "UPDATE accounts SET points = points + $1, payment = payment + $2 WHERE uuid = $3", 
+              dif_points_1, dif_payment_1, account1[0])
+            
+            # бонусы после добавления предмета
             await conn.execute(
               "UPDATE accounts SET points = points + $1, payment = payment + $2 WHERE uuid = $3",
               dif_points_2, dif_payment_2, account2[0]
             )
-            # сама покупка предмета
-            await conn.execute(
-              "UPDATE accounts SET points = points + $1, payment = payment + $2 WHERE uuid = $3", 
-              (dif_points_1 - item[6]), dif_payment_1, account1[0])
+          return f"Предмет {item[1]} куплен!"
         else:
           raise UserInputException("Информация о пользователе, которому покупают предмет не найдена")
       else:
         raise UserInputException("Информация о покупателе не найдена")
     else:
       raise UserInputException("Предмет не найден")
+  except UserInputException as ex:
+    return str(ex)
   except Exception as ex:
     print(ex, "__buy item")
+    return "Произошла неизвестная ошибка"
